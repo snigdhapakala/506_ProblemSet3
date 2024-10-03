@@ -1,0 +1,201 @@
+---
+title: "STATS 506 Problem Set #3"
+author: "Snigdha Pakala"
+editor: visual
+format:
+  html:
+    embed-resources: true
+---
+
+### Link to my GitHub repository: \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_
+
+## Problem 1
+
+### 1a:
+
+```{r}
+#install.packages("haven")
+library(haven)
+vision_data <- read_xpt("VIX_D.xpt")
+demo_data <- read_xpt("DEMO_D.xpt")
+
+# merge both datasets by SEQN variable
+merged_df <- merge(demo_data, vision_data, by = "SEQN")
+
+# Confirm row count matches 6980
+nrow(merged_df)
+```
+
+### 1b: 
+
+```{r}
+#Estimate proportion of age brackets with distance glasses
+
+# First create the age brackets
+library(dplyr)
+merged_df$Age_Bracket <- cut(merged_df$RIDAGEYR, breaks = seq(0, max(merged_df$RIDAGEYR + 10, na.rm = TRUE), by = 10), right = TRUE, include.lowest = TRUE)
+
+# Check that the ages are bucketted correctly
+head(select(merged_df, RIDAGEYR, Age_Bracket))
+
+# distance glasses information: VIQ220 from the vision documentation
+
+# Create contingency table; include NAs for accurate proportion calculations
+contingency_table <- table(merged_df$Age_Bracket, merged_df$VIQ220, useNA = "ifany")
+
+# Results
+contingency_df <- data.frame(
+  Age_Bracket = rownames(contingency_table),
+  # Summed across all the rows in the contingency table to get the totals per age bracket
+  Total_Pop = apply(contingency_table, 1, sum),
+  # Only getting the VIQ220 == 1 population which is the first column of my table
+  Glasses_Pop = contingency_table[,1],
+  # Dividing the previous two columns
+  Proportion = contingency_table[,1] / apply(contingency_table, 1, sum), row.names = NULL
+)
+
+# Removing Nas from showing up in nice output
+contingency_df[is.na(contingency_df)] <- 0
+
+# Using kable to format this nicely
+table <- kable(contingency_df, 
+               digits = 2, 
+               col.names = NULL, 
+               caption = "Proportion of Individuals with Glasses by Age Bracket")
+# Used the source I linked in attribution of sources for the following:
+table <- kable_styling(table, 
+                       bootstrap_options = c("striped", "hover", "condensed", "responsive"), 
+                       full_width = F, 
+                       position = "center")
+
+# Adding the header
+table <- add_header_above(table, c("Age Bracket" = 1, "Total Population" = 1, "Glasses Population" = 1, "Glasses Proportion" = 1))
+
+# Specify column formatting for borders
+table <- column_spec(table, 1, bold = TRUE, border_right = TRUE)
+table <- column_spec(table, 2:4, border_left = TRUE, border_right = TRUE)
+
+# Print the final table
+table
+
+```
+
+### 1c:
+
+```{r}
+# Make glasses variable binary 
+merged_df$Binary_Glasses <- 1 * (merged_df$VIQ220 == 1)
+merged_df$Binary_Glasses[is.na(merged_df$Binary_Glasses)] <- 0
+
+head(select(merged_df, VIQ220, Binary_Glasses))
+
+# Fit Model 1: Age as the predictor
+model1 <- glm(Binary_Glasses ~ RIDAGEYR, data = merged_df, family = binomial)
+
+# Fit Model 2: Age, Race, and Gender as predictors
+model2 <- glm(Binary_Glasses ~ RIDAGEYR + RIDRETH1 + RIAGENDR, data = merged_df, family = binomial)
+
+# Fit Model 3: Age, Race, Gender, and Poverty Income Ratio as predictors
+model3 <- glm(Binary_Glasses ~ RIDAGEYR + RIDRETH1 + RIAGENDR + INDFMPIR, data = merged_df, family = binomial)
+
+
+logistic_reg_function <- function(model) {
+  odds_ratios <- exp(coef(model))  
+  sample_size <- nobs(model)  
+  pseudo_r2 <- pR2(model)["McFadden"]  
+  aic <- AIC(model)
+  
+  return(list(odds_ratios = odds_ratios, sample_size = sample_size, pseudo_r2 = pseudo_r2, aic = aic))
+}
+
+model1_func <- logistic_reg_function(model1)
+model2_func <- logistic_reg_function(model2)
+model3_func <- logistic_reg_function(model3)
+
+# Output the results in a readable format
+table_models <- data.frame(
+  Metric = c("Odds Ratios", "Sample Size", "Pseudo R^2", "AIC Values"),
+  Model1 = c(paste(round(model1_func$odds_ratios, 2), collapse=", "), 
+             model1_func$sample_size, 
+             round(model1_func$pseudo_r2, 4), 
+             round(model1_func$aic, 2)),
+  Model2 = c(paste(round(model2_func$odds_ratios, 2), collapse=", "), 
+             model2_func$sample_size, 
+             round(model2_func$pseudo_r2, 4), 
+             round(model2_func$aic, 2)),
+  Model3 = c(paste(round(model3_func$odds_ratios, 2), collapse=", "), 
+             model3_func$sample_size, 
+             round(model3_func$pseudo_r2, 4), 
+             round(model3_func$aic, 2))
+)
+
+
+
+```
+
+### 1d:
+
+```{r}
+
+```
+
+## Problem 2
+
+### 2a:
+
+```{r}
+
+```
+
+### 2b:
+
+```{r}
+
+```
+
+### 2c:
+
+```{r}
+```
+
+## Problem 3
+
+### 3a:
+
+```{r}
+
+```
+
+### 3b:
+
+```{r}
+
+```
+
+### 3c:
+
+```{r}
+
+```
+
+### 3d:
+
+```{r}
+
+```
+
+### 3e:
+
+```{r}
+
+```
+
+### Attribution of Sources:
+
+-   1a: used chat gpt to figure out which library will let me read the .xpt files in R
+
+-   1a: <https://www.datacamp.com/doc/r/merging> used this to figure out how to merge two datasets in R
+
+-   1b: <https://r-coder.com/cut-r/> used this for the cut() function to bucket ages together
+
+-   1b: <https://cran.r-project.org/web/packages/kableExtra/vignettes/awesome_table_in_html.html> used this link for all my kable formatting
