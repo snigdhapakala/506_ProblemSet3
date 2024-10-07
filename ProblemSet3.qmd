@@ -14,7 +14,7 @@ format:
 ### 1a:
 
 ```{r}
-#install.packages("haven")
+install.packages("haven")
 library(haven)
 vision_data <- read_xpt("VIX_D.xpt")
 demo_data <- read_xpt("DEMO_D.xpt")
@@ -26,17 +26,17 @@ merged_df <- merge(demo_data, vision_data, by = "SEQN")
 nrow(merged_df)
 ```
 
-### 1b: 
+### 1b:
 
 ```{r}
 #Estimate proportion of age brackets with distance glasses
 
 # First create the age brackets
 library(dplyr)
-merged_df$Age_Bracket <- cut(merged_df$RIDAGEYR, breaks = seq(0, max(merged_df$RIDAGEYR + 10, na.rm = TRUE), by = 10), right = TRUE, include.lowest = TRUE)
+merged_df$Age_Bracket <- cut(merged_df$RIDAGEYR, breaks = seq(0, max(merged_df$RIDAGEYR, na.rm = TRUE) + 10, by = 10), right = FALSE)
 
 # Check that the ages are bucketted correctly
-head(select(merged_df, RIDAGEYR, Age_Bracket))
+unique(select(merged_df, RIDAGEYR, Age_Bracket))
 
 # distance glasses information: VIQ220 from the vision documentation
 
@@ -56,7 +56,7 @@ contingency_df <- data.frame(
 
 # Removing Nas from showing up in nice output
 contingency_df[is.na(contingency_df)] <- 0
-
+library(kableExtra)
 # Using kable to format this nicely
 table <- kable(contingency_df, 
                digits = 2, 
@@ -98,8 +98,18 @@ model2 <- glm(Binary_Glasses ~ RIDAGEYR + RIDRETH1 + RIAGENDR, data = merged_df,
 # Fit Model 3: Age, Race, Gender, and Poverty Income Ratio as predictors
 model3 <- glm(Binary_Glasses ~ RIDAGEYR + RIDRETH1 + RIAGENDR + INDFMPIR, data = merged_df, family = binomial)
 
+library(pscl)
 
+#' This function takes each of the glm models and provides all 4 statistics requested in the question
+#'
+#' @param model This is meant for all 3 of the glm models to be inputted
+#'
+#' @return a list of odds ratios, sample side, pseudo r^2, and aic values for each model input
+#' @export
+#'
+#' @examples
 logistic_reg_function <- function(model) {
+  
   odds_ratios <- exp(coef(model))  
   sample_size <- nobs(model)  
   pseudo_r2 <- pR2(model)["McFadden"]  
@@ -108,6 +118,7 @@ logistic_reg_function <- function(model) {
   return(list(odds_ratios = odds_ratios, sample_size = sample_size, pseudo_r2 = pseudo_r2, aic = aic))
 }
 
+# Put the output of each model going into the above function into a respective object
 model1_func <- logistic_reg_function(model1)
 model2_func <- logistic_reg_function(model2)
 model3_func <- logistic_reg_function(model3)
@@ -129,13 +140,50 @@ table_models <- data.frame(
              round(model3_func$aic, 2))
 )
 
-
+table_models
 
 ```
 
 ### 1d:
 
 ```{r}
+# Check odds ratio between men and women
+
+# Null Hypothesis: the odds of wearing glasses/contacts for men and women are the same (odds ratio is 1)
+
+# Alternate Hypothesis: the odds of wearing glasses/contacts for men and women are not the same (odds ratio is not 1)
+
+summary(model3)
+
+# Making female participants the reference category in regression
+merged_df$RIAGENDR <- relevel(factor(merged_df$RIAGENDR), ref = "2")
+
+odds_ratio_gender <- exp(coef(model3)["RIAGENDR"])
+
+confint_gender <- exp(confint(model3)["RIAGENDR", ])
+
+# Output the confidence interval for gender (Men vs. Women)
+print(paste("95% Confidence Interval for Gender Odds Ratio (Men vs. Women):", 
+            round(confint_gender[1], 2), "to", round(confint_gender[2], 2)))
+
+```
+
+Since our 95% confidence interval does not include 1 (which is have been the case under the null), we have sufficient evidence of a difference in odds of wearing glasses/contacts between men and women. This implies that men are between 1.43 to 1.76 times more likely to be wearing glasses/contacts than women.
+
+```{r}
+# Check proportion of glasses/contact wearers between men and women
+
+# Create a contingency table for gender and glasses wearers
+table_gender_glasses <- table(merged_df$Binary_Glasses, merged_df$RIAGENDR)
+print(table_gender_glasses)
+
+# Perform chi-square test
+chi_square_test <- chisq.test(table_gender_glasses)
+
+# Output the p-value from the chi-square test
+chi_square_test$p.value
+
+print(paste("Since our p-value in our chi squared test came out to", chi_square_test$p.value, "we see evidence that the proportion of glasses/contact lens wearers differs significantly between men and women , as this value is lower than our significance level of alpha = 0.05"))
 
 ```
 
