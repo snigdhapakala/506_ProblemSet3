@@ -158,9 +158,10 @@ summary(model3)
 # Making female participants the reference category in regression
 merged_df$RIAGENDR <- relevel(factor(merged_df$RIAGENDR), ref = "2")
 
-odds_ratio_gender <- exp(coef(model3)["RIAGENDR"])
-
 confint_gender <- exp(confint(model3)["RIAGENDR", ])
+
+# Sanity check of confidence interval
+odds_ratio_gender <- exp(coef(model3)["RIAGENDR"])
 
 # Output the confidence interval for gender (Men vs. Women)
 print(paste("95% Confidence Interval for Gender Odds Ratio (Men vs. Women):", 
@@ -211,32 +212,95 @@ print(paste("Since our p-value in our chi squared test came out to", chi_square_
 ### 3a:
 
 ```{r}
+us500 <- read.csv("us-500.csv")
+email <- us500$email
+head(us500)
+
+# Display all of the email addresses ending in .com
+email[grepl("\\.com$", email)]
+
+# Count email addresses ending in .com
+dot_com_addresses <- sum(grepl("\\.com$", email))
+
+# Total unique email addresses
+total <- 500
+
+# Display Results: Proportion of .com addresses
+cat(paste("Proportion of .com addresses from this dataset is", dot_com_addresses/total))
 
 ```
 
 ### 3b:
 
 ```{r}
+# [^] returns the negation of the following 
+# a-zA-Z is regarding alphabetic characters both lower and upper case
+# 0-9 is regarding numeric characters 
+# @ and \\. exclude these from counting in the pattern
+# Putting all these together returns those emails that include a character other than the ones listed here, so some non-alphanumeric character(s) excluding @ and . in the address.
 
+# Sanity Check
+head(email[grep("[^a-zA-Z0-9@\\.]", email)]) 
+
+non_alpha_num <- sum(grepl("[^a-zA-Z0-9@\\.]", email))
+
+# Display Results: Proportion of non-alpha-num email addresses
+cat(paste("Proportion of email addresses from this dataset with an alphanumeric character besides @ and . is", non_alpha_num/total))
 ```
 
 ### 3c:
 
 ```{r}
+# Use substr method from class/ professor's notes
+area_code <- table(substr(us500$phone1, 1, 3)) 
 
+# Extract the top 5 names and values from this table sorted in descending order
+max_area_code <- sort(area_code, decreasing = TRUE)[1:5] 
+max_area_code
+
+# Extract the top 5 most common area codes by grabbing the names of these high frequency values
+names(max_area_code)
+
+# Display Results
+cat(paste("The top 5 most common area codes amongst all phone numbers are:\n"))
+cat(paste(names(max_area_code)), sep = "\n")
 ```
 
 ### 3d:
 
 ```{r}
+address <- us500$address
 
+# Get all the addresses that end with a number 
+(address[grepl("[0-9]+$", address)])
+
+# Use lecture and professor notes for the rest
+table(grepl("[0-9]+$", address))
+
+matches <- regexpr("[0-9]+$", address)
+
+apt_nums <- as.numeric(regmatches(address, matches))
+
+# Display results in a histogram
+hist(log(apt_nums), main = "Histogram of Log of Apartment Numbers", xlab = "Log of Apartment Numbers")
 ```
 
 ### 3e:
 
 ```{r}
+# Extract all the unique values in our list of apartment numbers
+unique(apt_nums)
 
+# Use regex to extract the first digit of these 
+first_digits <- sub("^([0-9]).*", "\\1", apt_nums)
+
+# Put these first digits in a table to get the frequency of them occurring in our dataset, and sort in decreasing order so that we see which are most common
+sort(table(first_digits), decreasing = TRUE)
+
+length(apt_nums) # total of 118 values in apt_nums
 ```
+
+Benford's Law states that in sets that obey the law, the number 1 appears as the leading significant digit about 30% of the time, while 9 appears as the leading significant digit less than 5% of the time. However, in this data, 9 is the leading number 14.4% of the time (17 / 118), beating 1 which is sitting at 12.7% (15 / 118). Thus, since the apartment numbers do not appear to follow Benford’s law, I do not think the apartment numbers would pass as real data.
 
 ### Attribution of Sources:
 
@@ -247,3 +311,15 @@ print(paste("Since our p-value in our chi squared test came out to", chi_square_
 -   1b: <https://r-coder.com/cut-r/> used this for the cut() function to bucket ages together
 
 -   1b: <https://cran.r-project.org/web/packages/kableExtra/vignettes/awesome_table_in_html.html> used this link for all my kable formatting
+
+-   1c: <https://rpubs.com/snijesh/odds-ratio> used this to learn how to extract odds ratios/ what that means
+
+-   1c: <https://www.rdocumentation.org/packages/pscl/versions/1.5.9/topics/pR2> used for psuedo r\^2 extraction
+
+-   1c: <https://stackoverflow.com/questions/41200881/how-to-extract-aic-from-glm> used for AIC values, was not aware it was part of the built in summary
+
+-   1d: <https://stackoverflow.com/questions/3872070/how-to-force-r-to-use-a-specified-factor-level-as-reference-in-a-regression> used for releveling to change/confirm reference category
+
+-   1d: <http://www.sthda.com/english/wiki/chi-square-goodness-of-fit-test-in-r> used for chi-squared, setting up the code
+
+-   3a-3d: Regex notes from professor, class notes
