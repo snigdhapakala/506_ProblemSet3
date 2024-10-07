@@ -7,7 +7,7 @@ format:
     embed-resources: true
 ---
 
-### Link to my GitHub repository: \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_
+### Link to my GitHub repository: <https://github.com/snigdhapakala/506_ProblemSet3>
 
 ## Problem 1
 
@@ -26,13 +26,17 @@ merged_df <- merge(demo_data, vision_data, by = "SEQN")
 nrow(merged_df)
 ```
 
-### 1b:
+### 1b: 
 
 ```{r}
-#Estimate proportion of age brackets with distance glasses
+# Estimate proportion of age brackets with distance glasses
+
+# Justification of my Answer:
+# I interpreted that we are solving for the proportion of glasses wearers over the total population of 6,980, since the question doesn't explicitly state to only check the proportion of glasses wearers between those that do wear them and those that don't. Therefore, I include NAs in my contingency table so that, our denominator sums up to 6,980.
 
 # First create the age brackets
 library(dplyr)
+# Use cut function to create 10 year brackets
 merged_df$Age_Bracket <- cut(merged_df$RIDAGEYR, breaks = seq(0, max(merged_df$RIDAGEYR, na.rm = TRUE) + 10, by = 10), right = FALSE)
 
 # Check that the ages are bucketted correctly
@@ -56,6 +60,7 @@ contingency_df <- data.frame(
 
 # Removing Nas from showing up in nice output
 contingency_df[is.na(contingency_df)] <- 0
+
 library(kableExtra)
 # Using kable to format this nicely
 table <- kable(contingency_df, 
@@ -188,7 +193,7 @@ print(paste("Since our p-value in our chi squared test came out to", chi_square_
 
 ```
 
-## Problem 2
+## Problem 2: 
 
 ### 2a:
 
@@ -213,7 +218,9 @@ gg("
 # Answer:
 # Find the distinct count of movies that were released in 2006:
 gg("
-  SELECT MIN(release_year) AS oldest_movie_year, COUNT(DISTINCT film_id) AS movies_released
+  SELECT 
+    MIN(release_year) AS oldest_movie_year
+    , COUNT(DISTINCT film_id) AS movies_released
   FROM film
 ")
 ```
@@ -228,6 +235,8 @@ Thus, it can be seen that 2006 is when the oldest movie in the table was release
 # First use SQL query or queries to extract the appropriate table(s), then use regular R operations on those data.frames to answer the question. 
 genre_film <- as.data.frame(
   gg("
+  -- Pull out all raw data
+  -- Include all of the categories so we left join all film id's to the categories
     SELECT 
       a.category_id
       , a.name
@@ -255,6 +264,7 @@ cat(paste("Using the R method after extracting the SQL information and creating 
 
 # Second, use a single SQL query to answer the question.
 gg("
+  -- Directly aggregate count of films for each genre
   SELECT 
     a.name
     , COUNT(DISTINCT b.film_id) films
@@ -264,11 +274,15 @@ gg("
   GROUP BY 
     a.name
     , a.category_id
+  -- Order by ascending to get the genre with least film count at the top
   ORDER BY films ASC
+  -- Limit output to 1 to obtain answer
   LIMIT 1
 ")
 
 ```
+
+Thus, it is clear that both methods show Music is the least common genre in the dataset, with 51 films of this genre.
 
 ### 2c:
 
@@ -282,6 +296,7 @@ gg("
 cust_countries <- as.data.frame(
   gg("
     SELECT 
+    -- Inlucde all customers and associated countries, so start with customers and left join till country information
       a.customer_id
       , b.address_id
       , c.city_id
@@ -309,6 +324,8 @@ cat(paste("Using the R method after extracting the SQL information and creating 
 
 # Second, use a single SQL query to answer the question.
 gg("
+  -- Directly pull out each country and the respective customer count per country 
+  -- by nesting another query in the 'FROM' that creates the same raw table as above.
   SELECT 
     e.country
     , COUNT(DISTINCT e.customer_id) AS cust_count
@@ -326,10 +343,13 @@ gg("
       LEFT JOIN country d
         ON c.country_id = d.country_id) e
   GROUP BY e.country
+  -- Limit answer to only those countries with exactly 13 customers
   HAVING cust_count = 13
 ")
 
 ```
+
+Thus, in both methods, we see that Argentina and Nigeria are the 2 countries from where exactly 13 customers in our dataset are from.
 
 ## Problem 3
 
@@ -338,10 +358,9 @@ gg("
 ```{r}
 us500 <- read.csv("us-500.csv")
 email <- us500$email
-head(us500)
 
-# Display all of the email addresses ending in .com
-email[grepl("\\.com$", email)]
+# Display all of the email addresses ending in .com. Sanity check:
+# email[grepl("\\.com$", email)]
 
 # Count email addresses ending in .com
 dot_com_addresses <- sum(grepl("\\.com$", email))
@@ -363,20 +382,28 @@ cat(paste("Proportion of .com addresses from this dataset is", dot_com_addresses
 # @ and \\. exclude these from counting in the pattern
 # Putting all these together returns those emails that include a character other than the ones listed here, so some non-alphanumeric character(s) excluding @ and . in the address.
 
-# Sanity Check
-head(email[grep("[^a-zA-Z0-9@\\.]", email)]) 
+# Extract all strings before the @ symbol:
+extracted_pre <- gsub("@.*", "", email)
 
-non_alpha_num <- sum(grepl("[^a-zA-Z0-9@\\.]", email))
+# Count only alphanumeric characters
+only_alpha_num <- sum(grepl("^[a-zA-Z0-9]+$", extracted_pre))
+
+# Calculate the proportion of non-alphanumeric (by inverting)
+total <- length(email)
+proportion <- 1 - (only_alpha_num / total)
 
 # Display Results: Proportion of non-alpha-num email addresses
-cat(paste("Proportion of email addresses from this dataset with an alphanumeric character besides @ and . is", non_alpha_num/total))
+cat(paste("Proportion of email addresses with a non-alphanumeric character before @ (excluding @ and .) is", round(proportion, 3)))
 ```
 
-### 3c:
+### 3c: 
 
 ```{r}
+# Combine phone1 and phone2
+all_phones <- c(us500$phone1, us500$phone2)
+
 # Use substr method from class/ professor's notes
-area_code <- table(substr(us500$phone1, 1, 3)) 
+area_code <- table(substr(all_phones, 1, 3)) 
 
 # Extract the top 5 names and values from this table sorted in descending order
 max_area_code <- sort(area_code, decreasing = TRUE)[1:5] 
@@ -421,7 +448,8 @@ first_digits <- sub("^([0-9]).*", "\\1", apt_nums)
 # Put these first digits in a table to get the frequency of them occurring in our dataset, and sort in decreasing order so that we see which are most common
 sort(table(first_digits), decreasing = TRUE)
 
-length(apt_nums) # total of 118 values in apt_nums
+# total of 118 values in apt_nums
+length(apt_nums) 
 ```
 
 Benford's Law states that in sets that obey the law, the number 1 appears as the leading significant digit about 30% of the time, while 9 appears as the leading significant digit less than 5% of the time. However, in this data, 9 is the leading number 14.4% of the time (17 / 118), beating 1 which is sitting at 12.7% (15 / 118). Thus, since the apartment numbers do not appear to follow Benford’s law, I do not think the apartment numbers would pass as real data.
