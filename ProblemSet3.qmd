@@ -14,7 +14,6 @@ format:
 ### 1a:
 
 ```{r}
-install.packages("haven")
 library(haven)
 vision_data <- read_xpt("VIX_D.xpt")
 demo_data <- read_xpt("DEMO_D.xpt")
@@ -40,7 +39,7 @@ library(dplyr)
 merged_df$Age_Bracket <- cut(merged_df$RIDAGEYR, breaks = seq(0, max(merged_df$RIDAGEYR, na.rm = TRUE) + 10, by = 10), right = FALSE)
 
 # Check that the ages are bucketted correctly
-unique(select(merged_df, RIDAGEYR, Age_Bracket))
+head(unique(select(merged_df, RIDAGEYR, Age_Bracket)))
 
 # distance glasses information: VIQ220 from the vision documentation
 
@@ -145,6 +144,26 @@ table_models <- data.frame(
              round(model3_func$aic, 2))
 )
 
+library(kableExtra)
+# Using kable to format this nicely
+table_models <- kable(table_models, 
+               digits = 2, 
+               col.names = NULL, 
+               caption = "Logistic Regression Model Comparison")
+# Used the source I linked in attribution of sources for the following:
+table_models <- kable_styling(table_models, 
+                       bootstrap_options = c("striped", "hover", "condensed", "responsive"), 
+                       full_width = F, 
+                       position = "center")
+
+# Adding the header
+  table_models <- add_header_above(table_models, c("Metric" = 1, "Model 1" = 1, "Model 2" = 1, "Model 3" = 1))
+
+# Specify column formatting for borders
+table_models <- column_spec(table_models, 1, bold = TRUE, border_right = TRUE)
+table_models <- column_spec(table_models, 2:4, border_left = TRUE, border_right = TRUE)
+
+# Print the final table
 table_models
 
 ```
@@ -169,7 +188,7 @@ confint_gender <- exp(confint(model3)["RIAGENDR", ])
 odds_ratio_gender <- exp(coef(model3)["RIAGENDR"])
 
 # Output the confidence interval for gender (Men vs. Women)
-print(paste("95% Confidence Interval for Gender Odds Ratio (Men vs. Women):", 
+cat(paste("95% Confidence Interval for Gender Odds Ratio (Men vs. Women):", 
             round(confint_gender[1], 2), "to", round(confint_gender[2], 2)))
 
 ```
@@ -189,7 +208,7 @@ chi_square_test <- chisq.test(table_gender_glasses)
 # Output the p-value from the chi-square test
 chi_square_test$p.value
 
-print(paste("Since our p-value in our chi squared test came out to", chi_square_test$p.value, "we see evidence that the proportion of glasses/contact lens wearers differs significantly between men and women , as this value is lower than our significance level of alpha = 0.05"))
+cat(paste("Since our p-value in our chi squared test came out to", chi_square_test$p.value, "we see evidence that the proportion of glasses/contact lens wearers differs significantly between men and women , as this value is lower than our significance level of alpha = 0.05"))
 
 ```
 
@@ -423,7 +442,7 @@ cat(paste(names(max_area_code)), sep = "\n")
 address <- us500$address
 
 # Get all the addresses that end with a number 
-(address[grepl("[0-9]+$", address)])
+head((address[grepl("[0-9]+$", address)]))
 
 # Use lecture and professor notes for the rest
 table(grepl("[0-9]+$", address))
@@ -439,8 +458,6 @@ hist(log(apt_nums), main = "Histogram of Log of Apartment Numbers", xlab = "Log 
 ### 3e:
 
 ```{r}
-# Extract all the unique values in our list of apartment numbers
-unique(apt_nums)
 
 # Use regex to extract the first digit of these 
 first_digits <- sub("^([0-9]).*", "\\1", apt_nums)
