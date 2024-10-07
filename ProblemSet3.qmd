@@ -193,18 +193,142 @@ print(paste("Since our p-value in our chi squared test came out to", chi_square_
 ### 2a:
 
 ```{r}
+# Establish connection
+library(DBI)
+sakila <- dbConnect(RSQLite::SQLite(), "sakila_master.db")
+dbListTables(sakila)
 
+# Get the year of the oldest movie and the number of movies released that year 
+gg <- function(query){
+  dbGetQuery(sakila, query)
+}
+
+# Quick check of the data, see all the dates before putting min() on the year variable
+gg("
+  SELECT DISTINCT release_year
+  FROM film
+")
+# This tells me we only have one release year in the film so this is automatically the oldest release year, which means all the rows in the table are the films released this year
+
+# Answer:
+# Find the distinct count of movies that were released in 2006:
+gg("
+  SELECT MIN(release_year) AS oldest_movie_year, COUNT(DISTINCT film_id) AS movies_released
+  FROM film
+")
 ```
+
+Thus, it can be seen that 2006 is when the oldest movie in the table was released, and there are 1,000 movies in our table that were released that year.
 
 ### 2b:
 
 ```{r}
+# What genre of movie is the least common in the data, and how many movies are of this genre?
+
+# First use SQL query or queries to extract the appropriate table(s), then use regular R operations on those data.frames to answer the question. 
+genre_film <- as.data.frame(
+  gg("
+    SELECT 
+      a.category_id
+      , a.name
+      , b.film_id
+    FROM category a
+    LEFT JOIN film_category b
+      ON a.category_id = b.category_id
+  ")
+)
+
+# Crease a table of the genres:
+table(genre_film$name)
+  
+# Sort in ascending order
+sort(table(genre_film$name), descending = FALSE)
+
+# Now extract the first name in the sorted table to get the genre with the least number of movies, and the respected film frequency
+least_common_genre1 <- names(sort(table(genre_film$name), descending = FALSE))[1]
+least_common_genre_num_films1 <- sort(table(genre_film$name), descending = FALSE)[1]
+
+# Display results of the first method
+cat(paste("Using the R method after extracting the SQL information and creating a data frame, we see that the least common genre is", least_common_genre1, "with", least_common_genre_num_films1, "films"))
+
+###############################################################################################
+
+# Second, use a single SQL query to answer the question.
+gg("
+  SELECT 
+    a.name
+    , COUNT(DISTINCT b.film_id) films
+  FROM category a
+  LEFT JOIN film_category b
+    ON a.category_id = b.category_id
+  GROUP BY 
+    a.name
+    , a.category_id
+  ORDER BY films ASC
+  LIMIT 1
+")
 
 ```
 
 ### 2c:
 
 ```{r}
+# Identify which country or countries have exactly 13 customers.
+
+# This method requires 4 tables: Customer, Address, City, and then Country since we need the customer count which is in Customer and we need the country name which is in Country, and to connect the two we need to go through Address with address_id, City with city_id, and finally Country with country_id
+
+# First use SQL query or queries to extract the appropriate table(s), then use regular R operations on those data.frames to answer the question. 
+
+cust_countries <- as.data.frame(
+  gg("
+    SELECT 
+      a.customer_id
+      , b.address_id
+      , c.city_id
+      , d.country
+    FROM customer a
+    LEFT JOIN address b
+      ON a.address_id = b.address_id
+    LEFT JOIN city c
+      ON b.city_id = c.city_id
+    LEFT JOIN country d
+      ON c.country_id = d.country_id
+  ")
+)
+
+# Table with logical values
+country_counts <- table(cust_countries$country)
+
+# Find countries where the count equals 13
+countries_13_custs <- country_counts[country_counts == 13]
+
+# Display the result
+cat(paste("Using the R method after extracting the SQL information and creating a data frame, we see that the countries with exactly 13 customers are", names(countries_13_custs)[1], "and", names(countries_13_custs)[2]))
+
+###############################################################################################
+
+# Second, use a single SQL query to answer the question.
+gg("
+  SELECT 
+    e.country
+    , COUNT(DISTINCT e.customer_id) AS cust_count
+  FROM
+      (SELECT 
+        a.customer_id
+        , b.address_id
+        , c.city_id
+        , d.country
+      FROM customer a
+      LEFT JOIN address b
+        ON a.address_id = b.address_id
+      LEFT JOIN city c
+        ON b.city_id = c.city_id
+      LEFT JOIN country d
+        ON c.country_id = d.country_id) e
+  GROUP BY e.country
+  HAVING cust_count = 13
+")
+
 ```
 
 ## Problem 3
